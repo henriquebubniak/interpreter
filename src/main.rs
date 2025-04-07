@@ -1,11 +1,69 @@
 use std::env;
+use std::fmt::Display;
 use std::fs;
-use std::io::{self, Write};
+
+#[derive(Clone)]
+enum TokenType {
+    LeftParen,
+    RightParen,
+    EOF,
+}
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::LeftParen => write!(f, "LEFT_PAREN"),
+            TokenType::RightParen => write!(f, "RIGHT_PAREN"),
+            TokenType::EOF => write!(f, "EOF"),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct Token {
+    ttype: TokenType,
+    lexeme: String,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} null", self.ttype, self.lexeme)
+    }
+}
+impl Token {
+    fn new(ttype: TokenType, lexeme: String) -> Token {
+        Token { ttype, lexeme }
+    }
+}
+
+struct Scanner {
+    buffer: Vec<Token>,
+}
+
+impl Scanner {
+    pub fn scan(&mut self, source: &str) -> Vec<Token> {
+        for line in source.lines() {
+            self.parse_line(line)
+        }
+        self.buffer.push(Token::new(TokenType::EOF, "".to_string()));
+        self.buffer.clone()
+    }
+    fn parse_line(&mut self, line: &str) {
+        for c in line.chars() {
+            if c == '(' {
+                self.buffer
+                    .push(Token::new(TokenType::LeftParen, c.to_string()));
+            } else if c == ')' {
+                self.buffer
+                    .push(Token::new(TokenType::RightParen, c.to_string()));
+            }
+        }
+    }
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
+        eprintln!("Usage: {} tokenize <filename>", args[0]);
         return;
     }
 
@@ -14,24 +72,23 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                eprintln!("Failed to read file {}", filename);
                 String::new()
             });
 
-            //Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
+                let mut scanner = Scanner { buffer: Vec::new() };
+                let tokens = scanner.scan(&file_contents);
+                for token in tokens {
+                    println!("{token}");
+                }
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }
         }
         _ => {
-            writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
+            eprintln!("Unknown command: {}", command);
         }
     }
 }
