@@ -1,6 +1,7 @@
 use std::env;
 use std::fmt::Display;
 use std::fs;
+use std::process::exit;
 
 #[derive(Clone, Debug)]
 enum TokenType {
@@ -16,6 +17,7 @@ enum TokenType {
     Slash,
     Star,
     Eof,
+    Whitespace,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,7 +33,7 @@ impl Display for TokenType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Token {
     ttype: TokenType,
     lexeme: String,
@@ -48,39 +50,35 @@ impl Token {
     }
 }
 
-struct Scanner {
-    buffer: Vec<Token>,
-}
+struct Scanner {}
 
 impl Scanner {
-    pub fn scan(&mut self, source: &str) -> Vec<Token> {
-        for line in source.lines() {
-            self.parse_line(line)
-        }
-        self.buffer.push(Token::new(TokenType::Eof, "".to_string()));
-        self.buffer.clone()
-    }
-    fn parse_line(&mut self, line: &str) {
-        for c in line.chars() {
+    pub fn scan(&mut self, source: &str) -> Vec<Result<Token, String>> {
+        let mut buffer = Vec::new();
+        let line = 1;
+        for c in source.chars() {
             let ttype = match c {
-                '(' => TokenType::LeftParen,
-                ')' => TokenType::RightParen,
-                '{' => TokenType::LeftBrace,
-                '}' => TokenType::RightBrace,
-                ',' => TokenType::Comma,
-                '.' => TokenType::Dot,
-                '-' => TokenType::Minus,
-                '+' => TokenType::Plus,
-                ';' => TokenType::Semicolon,
-                '/' => TokenType::Slash,
-                '*' => TokenType::Star,
-                _ => TokenType::Eof,
+                '(' => Ok(TokenType::LeftParen),
+                ')' => Ok(TokenType::RightParen),
+                '{' => Ok(TokenType::LeftBrace),
+                '}' => Ok(TokenType::RightBrace),
+                ',' => Ok(TokenType::Comma),
+                '.' => Ok(TokenType::Dot),
+                '-' => Ok(TokenType::Minus),
+                '+' => Ok(TokenType::Plus),
+                ';' => Ok(TokenType::Semicolon),
+                '/' => Ok(TokenType::Slash),
+                '*' => Ok(TokenType::Star),
+                ' ' | '\n' => Ok(TokenType::Whitespace),
+                _ => Err(format!("[line {line}] Error: Unexpected character: {c}")),
             };
-            if let TokenType::Eof = ttype {
-                continue;
-            }
-            self.buffer.push(Token::new(ttype, c.to_string()));
+            buffer.push(match ttype {
+                Ok(ok_ttype) => Ok(Token::new(ok_ttype, c.to_string())),
+                Err(s) => Err(s),
+            });
         }
+        buffer.push(Ok(Token::new(TokenType::Eof, "".to_string())));
+        buffer
     }
 }
 
@@ -102,10 +100,23 @@ fn main() {
             });
 
             if !file_contents.is_empty() {
-                let mut scanner = Scanner { buffer: Vec::new() };
+                let mut scanner = Scanner {};
                 let tokens = scanner.scan(&file_contents);
-                for token in tokens {
-                    println!("{token}");
+                let mut contains_error = false;
+                for result_token in tokens {
+                    match result_token {
+                        Ok(token) => match token.ttype {
+                            TokenType::Whitespace => (),
+                            _ => println!("{token}"),
+                        },
+                        Err(s) => {
+                            eprintln!("{s}");
+                            contains_error = true;
+                        }
+                    }
+                }
+                if contains_error {
+                    exit(65);
                 }
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
