@@ -62,36 +62,24 @@ impl Scanner {
     }
     fn parse_line(&mut self, line: &str) {
         for c in line.chars() {
-            match c {
-                '(' => self
-                    .buffer
-                    .push(Token::new(TokenType::LeftParen, c.to_string())),
-                ')' => self
-                    .buffer
-                    .push(Token::new(TokenType::RightParen, c.to_string())),
-                '{' => self
-                    .buffer
-                    .push(Token::new(TokenType::LeftBrace, c.to_string())),
-                '}' => self
-                    .buffer
-                    .push(Token::new(TokenType::RightBrace, c.to_string())),
-                ',' => self
-                    .buffer
-                    .push(Token::new(TokenType::Comma, c.to_string())),
-                '.' => self.buffer.push(Token::new(TokenType::Dot, c.to_string())),
-                '-' => self
-                    .buffer
-                    .push(Token::new(TokenType::Minus, c.to_string())),
-                '+' => self.buffer.push(Token::new(TokenType::Plus, c.to_string())),
-                ';' => self
-                    .buffer
-                    .push(Token::new(TokenType::Semicolon, c.to_string())),
-                '/' => self
-                    .buffer
-                    .push(Token::new(TokenType::Slash, c.to_string())),
-                '*' => self.buffer.push(Token::new(TokenType::Star, c.to_string())),
-                _ => (),
+            let ttype = match c {
+                '(' => TokenType::LeftParen,
+                ')' => TokenType::RightParen,
+                '{' => TokenType::LeftBrace,
+                '}' => TokenType::RightBrace,
+                ',' => TokenType::Comma,
+                '.' => TokenType::Dot,
+                '-' => TokenType::Minus,
+                '+' => TokenType::Plus,
+                ';' => TokenType::Semicolon,
+                '/' => TokenType::Slash,
+                '*' => TokenType::Star,
+                _ => TokenType::Eof,
+            };
+            if let TokenType::Eof = ttype {
+                continue;
             }
+            self.buffer.push(Token::new(ttype, c.to_string()));
         }
     }
 }
