@@ -18,6 +18,9 @@ enum TokenType {
     Star,
     Eof,
     Whitespace,
+    Equal,
+    EqualEqual,
+    Unmatched,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -50,35 +53,75 @@ impl Token {
     }
 }
 
-struct Scanner {}
+struct Scanner<'a> {
+    start: usize,
+    current: usize,
+    source: &'a [u8],
+    line: u32,
+    contains_error: bool,
+}
 
-impl Scanner {
-    pub fn scan(&mut self, source: &str) -> Vec<Result<Token, String>> {
-        let mut buffer = Vec::new();
-        let line = 1;
-        for c in source.chars() {
-            let ttype = match c {
-                '(' => Ok(TokenType::LeftParen),
-                ')' => Ok(TokenType::RightParen),
-                '{' => Ok(TokenType::LeftBrace),
-                '}' => Ok(TokenType::RightBrace),
-                ',' => Ok(TokenType::Comma),
-                '.' => Ok(TokenType::Dot),
-                '-' => Ok(TokenType::Minus),
-                '+' => Ok(TokenType::Plus),
-                ';' => Ok(TokenType::Semicolon),
-                '/' => Ok(TokenType::Slash),
-                '*' => Ok(TokenType::Star),
-                ' ' | '\n' => Ok(TokenType::Whitespace),
-                _ => Err(format!("[line {line}] Error: Unexpected character: {c}")),
-            };
-            buffer.push(match ttype {
-                Ok(ok_ttype) => Ok(Token::new(ok_ttype, c.to_string())),
-                Err(s) => Err(s),
-            });
+impl<'a> Scanner<'a> {
+    pub fn new(source: &str) -> Scanner {
+        Scanner {
+            start: 0,
+            current: 0,
+            source: source.as_bytes(),
+            line: 1,
+            contains_error: false,
         }
-        buffer.push(Ok(Token::new(TokenType::Eof, "".to_string())));
-        buffer
+    }
+    pub fn scan(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        let n = self.source.len();
+        self.start = 0;
+        self.current = 0;
+        while self.current < n {
+            let token = self.next_token();
+            self.start = self.current;
+            tokens.push(token);
+        }
+        tokens.push(Token::new(TokenType::Eof, "".to_string()));
+        tokens
+    }
+    fn next_token(&mut self) -> Token {
+        self.current += 1;
+        let ttype = match self.source[self.start] {
+            b'(' => TokenType::LeftParen,
+            b')' => TokenType::RightParen,
+            b'{' => TokenType::LeftBrace,
+            b'}' => TokenType::RightBrace,
+            b',' => TokenType::Comma,
+            b'.' => TokenType::Dot,
+            b'-' => TokenType::Minus,
+            b'+' => TokenType::Plus,
+            b';' => TokenType::Semicolon,
+            b'/' => TokenType::Slash,
+            b'*' => TokenType::Star,
+            x if x.is_ascii_whitespace() => {
+                while self.current < self.source.len()
+                    && self.source[self.current].is_ascii_whitespace()
+                {
+                    self.current += 1;
+                }
+                TokenType::Whitespace
+            }
+            _ => {
+                eprintln!(
+                    "[line {}] Error: Unexpected character: {}",
+                    self.line, self.source[self.start]
+                );
+                self.contains_error = true;
+                TokenType::Unmatched
+            }
+        };
+        let token = Token::new(
+            ttype,
+            std::str::from_utf8(&self.source[self.start..self.current])
+                .unwrap()
+                .to_string(),
+        );
+        token
     }
 }
 
@@ -100,22 +143,16 @@ fn main() {
             });
 
             if !file_contents.is_empty() {
-                let mut scanner = Scanner {};
-                let tokens = scanner.scan(&file_contents);
-                let mut contains_error = false;
-                for result_token in tokens {
-                    match result_token {
-                        Ok(token) => match token.ttype {
-                            TokenType::Whitespace => (),
-                            _ => println!("{token}"),
-                        },
-                        Err(s) => {
-                            eprintln!("{s}");
-                            contains_error = true;
-                        }
+                let mut scanner = Scanner::new(&file_contents);
+                let tokens = scanner.scan();
+                for token in tokens {
+                    if let TokenType::Unmatched = token.ttype {
+                    } else if let TokenType::Whitespace = token.ttype {
+                    } else {
+                        println!("{token}")
                     }
                 }
-                if contains_error {
+                if scanner.contains_error {
                     exit(65);
                 }
             } else {
