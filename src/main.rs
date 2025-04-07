@@ -6,6 +6,8 @@ use std::fs;
 enum TokenType {
     LeftParen,
     RightParen,
+    LeftBrace,
+    RightBrace,
     EOF,
 }
 impl Display for TokenType {
@@ -13,6 +15,8 @@ impl Display for TokenType {
         match self {
             TokenType::LeftParen => write!(f, "LEFT_PAREN"),
             TokenType::RightParen => write!(f, "RIGHT_PAREN"),
+            TokenType::LeftBrace => write!(f, "LEFT_BRACE"),
+            TokenType::RightBrace => write!(f, "RIGHT_BRACE"),
             TokenType::EOF => write!(f, "EOF"),
         }
     }
@@ -49,12 +53,20 @@ impl Scanner {
     }
     fn parse_line(&mut self, line: &str) {
         for c in line.chars() {
-            if c == '(' {
-                self.buffer
-                    .push(Token::new(TokenType::LeftParen, c.to_string()));
-            } else if c == ')' {
-                self.buffer
-                    .push(Token::new(TokenType::RightParen, c.to_string()));
+            match c {
+                '(' => self
+                    .buffer
+                    .push(Token::new(TokenType::LeftParen, c.to_string())),
+                ')' => self
+                    .buffer
+                    .push(Token::new(TokenType::RightParen, c.to_string())),
+                '{' => self
+                    .buffer
+                    .push(Token::new(TokenType::LeftBrace, c.to_string())),
+                '}' => self
+                    .buffer
+                    .push(Token::new(TokenType::RightBrace, c.to_string())),
+                _ => (),
             }
         }
     }
