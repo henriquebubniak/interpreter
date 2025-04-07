@@ -28,7 +28,7 @@ impl Display for TokenType {
         let mut s: String = self_s.chars().take(1).collect();
         for c in self_s.chars().skip(1) {
             if c.is_uppercase() {
-                s = s + "_";
+                s += "_";
             }
             s = s + &c.to_string().to_uppercase();
         }
@@ -61,7 +61,7 @@ struct Scanner<'a> {
     contains_error: bool,
 }
 
-impl<'a> Scanner<'a> {
+impl Scanner<'_> {
     pub fn new(source: &str) -> Scanner {
         Scanner {
             start: 0,
@@ -98,6 +98,11 @@ impl<'a> Scanner<'a> {
             b';' => TokenType::Semicolon,
             b'/' => TokenType::Slash,
             b'*' => TokenType::Star,
+            b'=' if self.current < self.source.len() && self.source[self.current] == b'=' => {
+                self.current += 1;
+                TokenType::EqualEqual
+            }
+            b'=' => TokenType::Equal,
             x if x.is_ascii_whitespace() => {
                 while self.current < self.source.len()
                     && self.source[self.current].is_ascii_whitespace()
@@ -109,7 +114,7 @@ impl<'a> Scanner<'a> {
             _ => {
                 eprintln!(
                     "[line {}] Error: Unexpected character: {}",
-                    self.line, self.source[self.start]
+                    self.line, self.source[self.start] as char
                 );
                 self.contains_error = true;
                 TokenType::Unmatched
