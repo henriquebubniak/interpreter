@@ -2,23 +2,32 @@ use std::env;
 use std::fmt::Display;
 use std::fs;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum TokenType {
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
-    EOF,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Slash,
+    Star,
+    Eof,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TokenType::LeftParen => write!(f, "LEFT_PAREN"),
-            TokenType::RightParen => write!(f, "RIGHT_PAREN"),
-            TokenType::LeftBrace => write!(f, "LEFT_BRACE"),
-            TokenType::RightBrace => write!(f, "RIGHT_BRACE"),
-            TokenType::EOF => write!(f, "EOF"),
+        let self_s: String = format!("{:?}", self);
+        let mut s: String = self_s.chars().take(1).collect();
+        for c in self_s.chars().skip(1) {
+            if c.is_uppercase() {
+                s = s + "_";
+            }
+            s = s + &c.to_string().to_uppercase();
         }
+        write!(f, "{}", s)
     }
 }
 
@@ -48,7 +57,7 @@ impl Scanner {
         for line in source.lines() {
             self.parse_line(line)
         }
-        self.buffer.push(Token::new(TokenType::EOF, "".to_string()));
+        self.buffer.push(Token::new(TokenType::Eof, "".to_string()));
         self.buffer.clone()
     }
     fn parse_line(&mut self, line: &str) {
@@ -66,6 +75,21 @@ impl Scanner {
                 '}' => self
                     .buffer
                     .push(Token::new(TokenType::RightBrace, c.to_string())),
+                ',' => self
+                    .buffer
+                    .push(Token::new(TokenType::Comma, c.to_string())),
+                '.' => self.buffer.push(Token::new(TokenType::Dot, c.to_string())),
+                '-' => self
+                    .buffer
+                    .push(Token::new(TokenType::Minus, c.to_string())),
+                '+' => self.buffer.push(Token::new(TokenType::Plus, c.to_string())),
+                ';' => self
+                    .buffer
+                    .push(Token::new(TokenType::Semicolon, c.to_string())),
+                '/' => self
+                    .buffer
+                    .push(Token::new(TokenType::Slash, c.to_string())),
+                '*' => self.buffer.push(Token::new(TokenType::Star, c.to_string())),
                 _ => (),
             }
         }
