@@ -27,6 +27,7 @@ enum TokenType {
     LessEqual,
     Greater,
     GreaterEqual,
+    Comment,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -80,6 +81,14 @@ impl<'a> Iterator for Scanner<'a> {
             b'-' => (TokenType::Minus, 1, 0),
             b'+' => (TokenType::Plus, 1, 0),
             b';' => (TokenType::Semicolon, 1, 0),
+            b'/' if start + 1 < self.source.len() && self.source[start + 1] == b'/' => {
+                let mut i = start + 1;
+                while i < self.source.len() && self.source[i] != b'\n' {
+                    i += 1;
+                }
+                let advance = i - start;
+                (TokenType::Comment, advance, 0)
+            }
             b'/' => (TokenType::Slash, 1, 0),
             b'*' => (TokenType::Star, 1, 0),
             b'!' if start + 1 < self.source.len() && self.source[start + 1] == b'=' => {
@@ -168,6 +177,7 @@ fn main() {
                 let mut scanner = Scanner::new(&file_contents);
                 for token in scanner.by_ref() {
                     if let TokenType::Unmatched = token.ttype {
+                    } else if let TokenType::Comment = token.ttype {
                     } else {
                         println!("{token}")
                     }
