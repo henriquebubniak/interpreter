@@ -17,7 +17,6 @@ enum TokenType {
     Slash,
     Star,
     Eof,
-    Whitespace,
     Equal,
     EqualEqual,
     Unmatched,
@@ -27,7 +26,7 @@ enum TokenType {
     LessEqual,
     Greater,
     GreaterEqual,
-    Comment,
+    String,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -40,6 +39,38 @@ impl Display for TokenType {
             s = s + &c.to_string().to_uppercase();
         }
         write!(f, "{}", s)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct Token {
+    ttype: TokenType,
+    lexeme: String,
+    literal: Option<String>,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} {}",
+            self.ttype,
+            self.lexeme,
+            if let Some(s) = &self.literal {
+                s
+            } else {
+                "null"
+            }
+        )
+    }
+}
+impl Token {
+    fn new(ttype: TokenType, lexeme: String, literal: Option<String>) -> Token {
+        Token {
+            ttype,
+            lexeme,
+            literal,
+        }
     }
 }
 
@@ -61,17 +92,38 @@ impl<'a> Scanner<'a> {
     }
 }
 impl<'a> Iterator for Scanner<'a> {
-    type Item = Token;
-    fn next(&mut self) -> Option<Token> {
+    type Item = Option<Token>;
+    fn next(&mut self) -> Option<Option<Token>> {
         if self.pos > self.source.len() {
             return None;
         }
         if self.pos == self.source.len() {
             self.pos += 1;
-            return Some(Token::new(TokenType::Eof, "".to_string()));
+            return Some(Some(Token::new(TokenType::Eof, "".to_string(), None)));
         }
         let start = self.pos;
+        let mut literal = None;
         let (ttype, advance, new_lines) = match self.source[start] {
+            b'"' => {
+                let mut i = start + 1;
+                let mut new_lines = 0;
+                while i < self.source.len() && self.source[i] != b'"' {
+                    if self.source[i] == b'\n' {
+                        new_lines += 1;
+                    }
+                    i += 1;
+                }
+                let advance = i - start;
+                if i == self.source.len() {
+                    self.errors
+                        .push(format!("[line {}] Error: Unterminated string.", self.line));
+                    (TokenType::Unmatched, advance, new_lines)
+                } else {
+                    literal =
+                        Some(String::from_utf8_lossy(&self.source[start + 1..i]).into_owned());
+                    (TokenType::String, advance + 1, new_lines)
+                }
+            }
             b'(' => (TokenType::LeftParen, 1, 0),
             b')' => (TokenType::RightParen, 1, 0),
             b'{' => (TokenType::LeftBrace, 1, 0),
@@ -87,7 +139,7 @@ impl<'a> Iterator for Scanner<'a> {
                     i += 1;
                 }
                 let advance = i - start;
-                (TokenType::Comment, advance, 0)
+                (TokenType::Unmatched, advance, 0)
             }
             b'/' => (TokenType::Slash, 1, 0),
             b'*' => (TokenType::Star, 1, 0),
@@ -117,7 +169,7 @@ impl<'a> Iterator for Scanner<'a> {
                     i += 1;
                 }
                 let advance = i - start;
-                (TokenType::Whitespace, advance, new_lines)
+                (TokenType::Unmatched, advance, new_lines)
             }
             _ => {
                 self.errors.push(format!(
@@ -129,31 +181,15 @@ impl<'a> Iterator for Scanner<'a> {
         };
         self.pos += advance;
         self.line += new_lines;
-        if let TokenType::Whitespace = ttype {
-            Some(Token::new(ttype, "".to_string()))
+        if let TokenType::Unmatched = ttype {
+            Some(None)
         } else {
-            Some(Token::new(
+            Some(Some(Token::new(
                 ttype,
                 String::from_utf8_lossy(&self.source[start..start + advance]).into_owned(),
-            ))
+                literal,
+            )))
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Token {
-    ttype: TokenType,
-    lexeme: String,
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} null", self.ttype, self.lexeme)
-    }
-}
-impl Token {
-    fn new(ttype: TokenType, lexeme: String) -> Token {
-        Token { ttype, lexeme }
     }
 }
 
@@ -176,11 +212,13 @@ fn main() {
             if !file_contents.is_empty() {
                 let mut scanner = Scanner::new(&file_contents);
                 for token in scanner.by_ref() {
+                    if token.is_none() {
+                        continue;
+                    }
+                    let token = token.unwrap();
                     if let TokenType::Unmatched = token.ttype {
-                    } else if let TokenType::Comment = token.ttype {
-                    } else if let TokenType::Whitespace = token.ttype {
                     } else {
-                        println!("{token}")
+                        println!("{}", token);
                     }
                 }
                 for error in scanner.errors.iter().by_ref() {
