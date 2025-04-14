@@ -178,6 +178,7 @@ fn main() {
                 for token in scanner.by_ref() {
                     if let TokenType::Unmatched = token.ttype {
                     } else if let TokenType::Comment = token.ttype {
+                    } else if let TokenType::Whitespace = token.ttype {
                     } else {
                         println!("{token}")
                     }
