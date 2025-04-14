@@ -108,7 +108,7 @@ impl<'a> Iterator for Scanner<'a> {
             }
             b'>' => (TokenType::Greater, 1, 0),
             c if c.is_ascii_whitespace() => {
-                let mut i = start + 1;
+                let mut i = start;
                 let mut new_lines = 0;
                 while i < self.source.len() && self.source[i].is_ascii_whitespace() {
                     if self.source[i] == b'\n' {
