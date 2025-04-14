@@ -51,7 +51,7 @@ impl<'a> Scanner<'a> {
             source: source.as_bytes(),
             pos: 0,
             errors: Vec::new(),
-            line: 0,
+            line: 1,
         }
     }
 }
@@ -100,7 +100,7 @@ impl<'a> Iterator for Scanner<'a> {
             }
             _ => {
                 self.errors.push(format!(
-                    "[line {}] Error: Unexpected character: '{}'",
+                    "[line {}] Error: Unexpected character: {}",
                     self.line, self.source[start] as char
                 ));
                 (TokenType::Unmatched, 1, 0)
