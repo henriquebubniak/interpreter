@@ -23,6 +23,10 @@ enum TokenType {
     Unmatched,
     Bang,
     BangEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
 }
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -86,6 +90,14 @@ impl<'a> Iterator for Scanner<'a> {
                 (TokenType::EqualEqual, 2, 0)
             }
             b'=' => (TokenType::Equal, 1, 0),
+            b'<' if start + 1 < self.source.len() && self.source[start + 1] == b'=' => {
+                (TokenType::LessEqual, 2, 0)
+            }
+            b'<' => (TokenType::Less, 1, 0),
+            b'>' if start + 1 < self.source.len() && self.source[start + 1] == b'=' => {
+                (TokenType::GreaterEqual, 2, 0)
+            }
+            b'>' => (TokenType::Greater, 1, 0),
             c if c.is_ascii_whitespace() => {
                 let mut i = start + 1;
                 let mut new_lines = 0;
